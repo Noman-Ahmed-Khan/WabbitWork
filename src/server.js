@@ -2,9 +2,7 @@ const createApp = require('./app');
 const env = require('./config/env');
 const { testConnection } = require('./config/db');
 
-/**
- * Start the server
- */
+// Start the server
 const startServer = async () => {
   try {
     // Test database connection
@@ -19,12 +17,12 @@ const startServer = async () => {
 
     // Start listening
     const server = app.listen(env.port, () => {
-      console.log(`
-🚀 Server is running!
-📍 Environment: ${env.nodeEnv}
-🔗 URL: http://localhost:${env.port}
-📚 API: http://localhost:${env.port}/api
-❤️  Health: http://localhost:${env.port}/api/health
+      console.log(`   
+                  Environment: ${env.nodeEnv.padEnd(45)}
+                  URL: http://localhost:${env.port.toString().padEnd(39)}
+                  API: http://localhost:${env.port}/api${' '.repeat(33)}
+                  Docs: http://localhost:${env.port}/api/docs${' '.repeat(29)}
+                  Health: http://localhost:${env.port}/api/health${' '.repeat(25)}
       `);
     });
 
