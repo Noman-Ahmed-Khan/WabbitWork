@@ -4,8 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const hpp = require('hpp');
 const passport = require('passport');
+const swaggerUi = require('swagger-ui-express');
 
 const env = require('./config/env');
+const swaggerSpec = require('./config/swagger');
 const { createSessionMiddleware } = require('./config/session');
 const { configurePassport } = require('./config/passport');
 const routes = require('./routes');
@@ -24,7 +26,16 @@ const createApp = () => {
   }
 
   // Security middleware
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+  }));
 
   // CORS configuration
   app.use(cors({
@@ -63,6 +74,36 @@ const createApp = () => {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // SWAGGER DOCUMENTATION
+  const swaggerOptions = {
+    explorer: true,
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info .title { color: #3b82f6 }
+    `,
+    customSiteTitle: 'Team Task Manager API Docs',
+    customfavIcon: '/favicon.ico',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+    },
+  };
+
+  app.use(
+    '/api/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, swaggerOptions)
+  );
+
+  // Serve OpenAPI spec as JSON
+  app.get('/api/docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  });
+  
   // API routes
   app.use('/api', routes);
 
@@ -72,7 +113,7 @@ const createApp = () => {
       success: true,
       message: 'Team Task Manager API',
       version: '1.0.0',
-      documentation: '/api/health',
+      documentation: '/api/docs',
     });
   });
 
