@@ -40,6 +40,38 @@ const findByTeam = async (teamId) => {
   return MembershipModel.findByTeam(teamId);
 };
 
+
+// Get team members
+const getTeamMembers = async (teamId, userId) => {
+  // Check if user is a member of the team
+  const userMembership = await db('memberships')
+    .where({ team_id: teamId, user_id: userId })
+    .first();
+
+  if (!userMembership) {
+    throw new AppError('You are not a member of this team', 403);
+  }
+
+  // Get all members
+  const members = await db('memberships')
+    .join('users', 'memberships.user_id', 'users.id')
+    .where('memberships.team_id', teamId)
+    .select(
+      'memberships.id',
+      'memberships.user_id',
+      'memberships.team_id',
+      'memberships.role',
+      'memberships.status',
+      'memberships.joined_at',
+      'users.email',
+      'users.first_name',
+      'users.last_name'
+    )
+    .orderBy('memberships.joined_at', 'asc');
+
+  return members;
+};
+
 // Add member to team
 const addMember = async (teamId, email, role, inviterId) => {
   // Find user by email
@@ -135,6 +167,7 @@ const leaveTeam = async (userId, teamId) => {
 };
 
 module.exports = {
+  getTeamMembers,
   create,
   findByUserAndTeam,
   findByUser,

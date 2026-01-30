@@ -9,6 +9,55 @@ const router = express.Router({ mergeParams: true });
 // All routes require authentication
 router.use(isAuthenticated);
 
+// Get Team members
+/**
+ * @swagger
+ * /teams/{teamId}/members:
+ *   get:
+ *     summary: Get team members
+ *     tags: [Members, Teams]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: List of team members
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     members:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Member'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+router.get(
+  '/',
+  isTeamMember,
+  membershipController.getMembers
+);
+
+
 // Add member (admin only)
 /**
  * @swagger

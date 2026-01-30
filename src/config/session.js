@@ -25,7 +25,9 @@ const createSessionMiddleware = () => {
   if (!env.isDevelopment) {
     const pgPool = new Pool({
       connectionString: env.database.url,
-      ssl: { rejectUnauthorized: false },
+      ssl: env.isProduction
+        ? { rejectUnauthorized: false }
+        : false,
     });
 
     sessionConfig.store = new PgSession({

@@ -13,7 +13,7 @@ const isAuthenticated = (req, res, next) => {
 // Middleware to check if user is a member of a team
 const isTeamMember = async (req, res, next) => {
   try {
-    const teamId = req.params.teamId || req.body.team_id;
+    const teamId = req.params.id;
     const userId = req.user.id;
 
     if (!teamId) {

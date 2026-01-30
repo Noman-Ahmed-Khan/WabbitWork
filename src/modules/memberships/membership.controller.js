@@ -2,6 +2,28 @@ const membershipService = require('./membership.service');
 const catchAsync = require('../../utils/catchAsync');
 
 /**
+ * Get team members
+ * * @route GET /api/teams/:teamId/members
+ */
+const getMembers = async (req, res, next) => {
+
+  try {
+    const { teamId } = req.params;
+    const userId = req.user.id;
+    
+    const members = await membershipService.getTeamMembers(teamId, userId);
+
+    res.json(
+      ApiResponse.success('Members retrieved successfully', {
+        members,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Add member to team
  * @route POST /api/teams/:teamId/members
  */
@@ -76,6 +98,7 @@ const leaveTeam = catchAsync(async (req, res) => {
 });
 
 module.exports = {
+  getMembers,
   addMember,
   updateRole,
   removeMember,
