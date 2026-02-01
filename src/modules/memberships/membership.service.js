@@ -25,60 +25,17 @@ const create = async (membershipData) => {
   return MembershipModel.create(membershipData);
 };
 
-// Find membership by user and team
-const findByUserAndTeam = async (userId, teamId) => {
-  return MembershipModel.findByUserAndTeam(userId, teamId);
-};
-
-// Find all memberships for a user
-const findByUser = async (userId) => {
-  return MembershipModel.findByUser(userId);
-};
-
-// Find all members of a team
-const findByTeam = async (teamId) => {
-  return MembershipModel.findByTeam(teamId);
-};
-
-
-// Get team members
-const getTeamMembers = async (teamId, userId) => {
-  // Check if user is a member of the team
-  const userMembership = await db('memberships')
-    .where({ team_id: teamId, user_id: userId })
-    .first();
-
-  if (!userMembership) {
-    throw new AppError('You are not a member of this team', 403);
-  }
-
-  // Get all members
-  const members = await db('memberships')
-    .join('users', 'memberships.user_id', 'users.id')
-    .where('memberships.team_id', teamId)
-    .select(
-      'memberships.id',
-      'memberships.user_id',
-      'memberships.team_id',
-      'memberships.role',
-      'memberships.status',
-      'memberships.joined_at',
-      'users.email',
-      'users.first_name',
-      'users.last_name'
-    )
-    .orderBy('memberships.joined_at', 'asc');
-
-  return members;
-};
+// Simple Finders
+const findByUserAndTeam = async (userId, teamId) => MembershipModel.findByUserAndTeam(userId, teamId);
+const findByUser = async (userId) => MembershipModel.findByUser(userId);
+const findByTeam = async (teamId) => MembershipModel.findByTeam(teamId);
+const getTeamMembers = async (teamId) => MembershipModel.findByTeam(teamId);
 
 // Add member to team
 const addMember = async (teamId, email, role, inviterId) => {
   // Find user by email
   const user = await userService.findByEmail(email);
-  if (!user) {
-    throw ApiError.notFound('User not found with this email');
-  }
+  if (!user) throw ApiError.notFound('User not found with this email');
 
   // Check if inviter has permission
   const inviterMembership = await findByUserAndTeam(inviterId, teamId);
@@ -87,9 +44,7 @@ const addMember = async (teamId, email, role, inviterId) => {
   }
 
   // Cannot add owner role
-  if (role === MEMBERSHIP_ROLE.OWNER) {
-    throw ApiError.forbidden('Cannot assign owner role');
-  }
+  if (role === MEMBERSHIP_ROLE.OWNER) throw ApiError.forbidden('Cannot assign owner role');
 
   return create({
     user_id: user.id,
@@ -99,69 +54,77 @@ const addMember = async (teamId, email, role, inviterId) => {
   });
 };
 
-//Update member role
-const updateRole = async (membershipId, newRole, updaterId, teamId) => {
-  const membership = await MembershipModel.findById(membershipId);
-  if (!membership) {
+/**
+ * Update member role
+ * UPDATED: Uses membershipId (not userId)
+ */
+const updateRole = async (teamId, membershipId, newRole, requesterId) => {
+  // 1. Find the membership by ID
+  const targetMembership = await MembershipModel.findById(membershipId);
+  if (!targetMembership) {
     throw ApiError.notFound('Membership not found');
   }
 
-  // Check if updater has permission
-  const updaterMembership = await findByUserAndTeam(updaterId, teamId);
-  if (!updaterMembership || updaterMembership.role !== MEMBERSHIP_ROLE.OWNER) {
+  // 2. Security Check: Ensure membership belongs to this team
+  if (targetMembership.team_id !== teamId) {
+    throw ApiError.badRequest('Membership does not belong to this team');
+  }
+
+  // 3. Permissions
+  const requesterMembership = await findByUserAndTeam(requesterId, teamId);
+  if (!requesterMembership || requesterMembership.role !== MEMBERSHIP_ROLE.OWNER) {
     throw ApiError.forbidden('Only team owner can change member roles');
   }
 
-  // Cannot change owner role
-  if (membership.role === MEMBERSHIP_ROLE.OWNER) {
-    throw ApiError.forbidden('Cannot change owner role');
-  }
-
-  // Cannot assign owner role
-  if (newRole === MEMBERSHIP_ROLE.OWNER) {
-    throw ApiError.forbidden('Cannot assign owner role');
-  }
+  if (targetMembership.role === MEMBERSHIP_ROLE.OWNER) throw ApiError.forbidden('Cannot change owner role');
+  if (newRole === MEMBERSHIP_ROLE.OWNER) throw ApiError.forbidden('Cannot assign owner role directly');
 
   return MembershipModel.update(membershipId, { role: newRole });
 };
 
-// Remove member from team
-const removeMember = async (membershipId, removerId, teamId) => {
-  const membership = await MembershipModel.findById(membershipId);
-  if (!membership) {
+/**
+ * Remove member
+ * UPDATED: Uses membershipId (not userId)
+ */
+const removeMember = async (teamId, membershipId, requesterId) => {
+  // 1. Find the membership by ID
+  const targetMembership = await MembershipModel.findById(membershipId);
+  if (!targetMembership) {
     throw ApiError.notFound('Membership not found');
   }
 
-  // Check if it's the owner
-  if (membership.role === MEMBERSHIP_ROLE.OWNER) {
+  // 2. Security Check: Ensure membership belongs to this team
+  if (targetMembership.team_id !== teamId) {
+    throw ApiError.badRequest('Membership does not belong to this team');
+  }
+
+  // 3. Permissions
+  if (targetMembership.role === MEMBERSHIP_ROLE.OWNER) {
     throw ApiError.forbidden('Cannot remove team owner');
   }
 
-  // Check if remover has permission (owner, admin, or self)
-  const removerMembership = await findByUserAndTeam(removerId, teamId);
-  const isSelf = membership.user_id === removerId;
-  const hasPermission = removerMembership && 
-    [MEMBERSHIP_ROLE.OWNER, MEMBERSHIP_ROLE.ADMIN].includes(removerMembership.role);
+  const isSelf = targetMembership.user_id === requesterId;
+  
+  if (!isSelf) {
+    const requesterMembership = await findByUserAndTeam(requesterId, teamId);
+    const hasPermission = requesterMembership && 
+      [MEMBERSHIP_ROLE.OWNER, MEMBERSHIP_ROLE.ADMIN].includes(requesterMembership.role);
 
-  if (!isSelf && !hasPermission) {
-    throw ApiError.forbidden('You do not have permission to remove this member');
+    if (!hasPermission) {
+      throw ApiError.forbidden('You do not have permission to remove this member');
+    }
   }
 
+  // 4. Delete by ID
   await MembershipModel.delete(membershipId);
   return { message: 'Member removed successfully' };
 };
 
-// Leave team
 const leaveTeam = async (userId, teamId) => {
   const membership = await findByUserAndTeam(userId, teamId);
-  if (!membership) {
-    throw ApiError.notFound('You are not a member of this team');
-  }
-
-  if (membership.role === MEMBERSHIP_ROLE.OWNER) {
-    throw ApiError.forbidden('Team owner cannot leave. Transfer ownership or delete the team.');
-  }
-
+  if (!membership) throw ApiError.notFound('You are not a member of this team');
+  if (membership.role === MEMBERSHIP_ROLE.OWNER) throw ApiError.forbidden('Team owner cannot leave');
+  
   await MembershipModel.deleteByUserAndTeam(userId, teamId);
   return { message: 'Successfully left the team' };
 };

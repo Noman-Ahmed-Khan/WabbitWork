@@ -2,14 +2,16 @@ const express = require('express');
 const teamController = require('./team.controller');
 const teamValidation = require('./team.validation');
 const { validate, sanitize } = require('../../middleware/validation.middleware');
-const { isAuthenticated, isTeamMember, isTeamOwner } = require('../../middleware/auth.middleware');
+const { isAuthenticated, isTeamMember, isTeamOwner, isTeamAdmin } = require('../../middleware/auth.middleware');
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(isAuthenticated);
 
-// Team CRUD routes
+// ==========================================
+// TEAM CRUD ROUTES
+// ==========================================
+
 /**
  * @swagger
  * /teams:
@@ -20,7 +22,7 @@ router.use(isAuthenticated);
  *       - sessionAuth: []
  *     responses:
  *       200:
- *         description: List of user's teams
+ *         description: List of user's teams with member/task counts
  *         content:
  *           application/json:
  *             schema:
@@ -54,7 +56,16 @@ router.get('/', teamController.getAll);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateTeamRequest'
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Marketing Team"
+ *               description:
+ *                 type: string
+ *                 example: "Tasks for Q4 marketing campaign"
  *     responses:
  *       201:
  *         description: Team created successfully
@@ -66,9 +77,6 @@ router.get('/', teamController.getAll);
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 message:
- *                   type: string
- *                   example: Team created successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -153,7 +161,12 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateTeamRequest'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Team updated successfully
@@ -167,7 +180,6 @@ router.get(
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Team updated successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -219,7 +231,6 @@ router.put(
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Team deleted successfully
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
@@ -234,7 +245,10 @@ router.delete(
   teamController.remove
 );
 
-// Team members
+// ==========================================
+// MEMBER MANAGEMENT ROUTES
+// ==========================================
+
 /**
  * @swagger
  * /teams/{id}/members:
@@ -281,6 +295,126 @@ router.get(
   validate(teamValidation.getById),
   isTeamMember,
   teamController.getMembers
+);
+
+/**
+ * @swagger
+ * /teams/{id}/members/{memberId}:
+ *   put:
+ *     summary: Update member role (Admin/Owner only)
+ *     tags: [Teams, Members]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Team ID
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Membership ID (not User ID)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member, ADMIN, MEMBER]
+ *                 description: New role for the member
+ *     responses:
+ *       200:
+ *         description: Member role updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     member:
+ *                       $ref: '#/components/schemas/Member'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+router.put(
+  '/:id/members/:memberId',
+  validate(teamValidation.updateMemberRole),
+  isTeamAdmin,
+  teamController.updateMemberRole
+);
+
+/**
+ * @swagger
+ * /teams/{id}/members/{memberId}:
+ *   delete:
+ *     summary: Remove member from team (Admin/Owner only)
+ *     tags: [Teams, Members]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Team ID
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Membership ID (not User ID)
+ *     responses:
+ *       200:
+ *         description: Member removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+router.delete(
+  '/:id/members/:memberId',
+  validate(teamValidation.removeMember),
+  isTeamAdmin,
+  teamController.removeMember
 );
 
 module.exports = router;
