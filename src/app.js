@@ -30,9 +30,11 @@ const createApp = () => {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        // Add cdnjs.cloudflare.com to styleSrc and scriptSrc
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", env.isProduction ? env.frontendUrl : "http://localhost:5173"]
       },
     },
   }));
@@ -77,9 +79,16 @@ const createApp = () => {
   // SWAGGER DOCUMENTATION
   const swaggerOptions = {
     explorer: true,
+    // Fix for Vercel: Load assets from CDN
+    customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui.min.css',
+    customJs: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui-bundle.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui-standalone-preset.js',
+    ],
     customCss: `
       .swagger-ui .topbar { display: none }
       .swagger-ui .info .title { color: #3b82f6 }
+      .swagger-ui .wrapper { padding: 0 }
     `,
     customSiteTitle: 'Team Task Manager API Docs',
     customfavIcon: '/favicon.ico',
@@ -97,7 +106,6 @@ const createApp = () => {
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec, swaggerOptions)
   );
-
   // Serve OpenAPI spec as JSON
   app.get('/api/docs.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
