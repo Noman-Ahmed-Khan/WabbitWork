@@ -3,6 +3,7 @@ const authService = require('./auth.service');
 const catchAsync = require('../../utils/catchAsync');
 const ApiError = require('../../utils/ApiError');
 
+
 /**
  * Register a new user
  * @route POST /api/auth/register
@@ -16,10 +17,17 @@ const register = catchAsync(async (req, res) => {
       throw ApiError.internal('Error logging in after registration');
     }
     
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      data: { user },
+    // Save session before sending response
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        throw ApiError.internal('Error saving session');
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Registration successful',
+        data: { user },
+      });
     });
   });
 });
@@ -43,10 +51,17 @@ const login = (req, res, next) => {
         return next(loginErr);
       }
 
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: { user },
+      // Explicitly save the session before responding
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          return next(saveErr);
+        }
+
+        res.json({
+          success: true,
+          message: 'Login successful',
+          data: { user },
+        });
       });
     });
   })(req, res, next);
