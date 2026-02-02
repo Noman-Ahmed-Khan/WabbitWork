@@ -30,12 +30,8 @@ const updateMemberRole = {
     memberId: Joi.string().uuid().required().label('Membership ID'),
   }),
   body: Joi.object({
-    // FIX: Allow both lowercase and uppercase roles
     role: Joi.string()
-      .valid(
-        'admin', 'member', 'owner',
-        'ADMIN', 'MEMBER', 'OWNER'
-      )
+      .valid('admin', 'member', 'owner', 'ADMIN', 'MEMBER', 'OWNER')
       .required(),
   }),
 };
@@ -47,10 +43,18 @@ const removeMember = {
   }),
 };
 
+// ADD THIS
+const leaveTeam = {
+  params: Joi.object({
+    id: Joi.string().uuid().required().label('Team ID'),
+  }),
+};
+
 module.exports = {
   create,
   update,
   getById,
   updateMemberRole,
   removeMember,
+  leaveTeam,
 };

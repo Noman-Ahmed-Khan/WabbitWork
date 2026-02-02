@@ -8,10 +8,7 @@ const router = express.Router();
 
 router.use(isAuthenticated);
 
-// ==========================================
 // TEAM CRUD ROUTES
-// ==========================================
-
 /**
  * @swagger
  * /teams:
@@ -245,9 +242,32 @@ router.delete(
   teamController.remove
 );
 
-// ==========================================
-// MEMBER MANAGEMENT ROUTES
-// ==========================================
+// MEMBER MANAGEMENT ROUTEs
+
+/**
+ * @swagger
+ * /teams/{id}/members/leave:
+ *   post:
+ *     summary: Leave a team
+ *     tags: [Teams, Members]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: Successfully left team
+ */
+router.post(
+  '/:id/members/leave',
+  validate(teamValidation.leaveTeam),
+  isTeamMember,
+  teamController.leaveTeam
+);
 
 /**
  * @swagger
