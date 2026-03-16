@@ -11,6 +11,11 @@ const UserModel = {
     return db(TABLE_NAME).where({ id, is_active: true }).first();
   },
 
+  // Find user by ID (including inactive)
+  findByIdAll: (id) => {
+    return db(TABLE_NAME).where({ id }).first();
+  },
+
   // Find user by email
   findByEmail: (email) => {
     return db(TABLE_NAME).where({ email: email.toLowerCase() }).first();
@@ -49,6 +54,71 @@ const UserModel = {
       });
   },
 
+  // Verify email
+  verifyEmail: (id) => {
+    return db(TABLE_NAME)
+      .where({ id })
+      .update({
+        email_verified: true,
+        email_verified_at: db.fn.now(),
+        updated_at: db.fn.now(),
+      })
+      .returning('*')
+      .then((rows) => rows[0]);
+  },
+
+  // Update password
+  updatePassword: (id, hashedPassword) => {
+    return db(TABLE_NAME)
+      .where({ id })
+      .update({
+        password: hashedPassword,
+        updated_at: db.fn.now(),
+      })
+      .returning('*')
+      .then((rows) => rows[0]);
+  },
+
+  // Update email
+  updateEmail: (id, newEmail) => {
+    return db(TABLE_NAME)
+      .where({ id })
+      .update({
+        email: newEmail.toLowerCase(),
+        email_verified: true,
+        email_verified_at: db.fn.now(),
+        pending_email: null,
+        pending_email_created_at: null,
+        updated_at: db.fn.now(),
+      })
+      .returning('*')
+      .then((rows) => rows[0]);
+  },
+
+  // Set pending email change
+  setPendingEmail: (id, pendingEmail) => {
+    return db(TABLE_NAME)
+      .where({ id })
+      .update({
+        pending_email: pendingEmail.toLowerCase(),
+        pending_email_created_at: db.fn.now(),
+        updated_at: db.fn.now(),
+      })
+      .returning('*')
+      .then((rows) => rows[0]);
+  },
+
+  // Clear pending email
+  clearPendingEmail: (id) => {
+    return db(TABLE_NAME)
+      .where({ id })
+      .update({
+        pending_email: null,
+        pending_email_created_at: null,
+        updated_at: db.fn.now(),
+      });
+  },
+
   // Soft delete user
   softDelete: (id) => {
     return db(TABLE_NAME)
@@ -59,7 +129,6 @@ const UserModel = {
       });
   },
 
-  
   // Search users by email or name
   search: (searchTerm, excludeUserId = null, limit = 10) => {
     let query = db(TABLE_NAME)
@@ -78,6 +147,18 @@ const UserModel = {
     }
 
     return query;
+  },
+
+  // Check if email exists (for email change validation)
+  emailExists: async (email, excludeUserId = null) => {
+    let query = db(TABLE_NAME).where({ email: email.toLowerCase() });
+    
+    if (excludeUserId) {
+      query = query.whereNot({ id: excludeUserId });
+    }
+    
+    const user = await query.first();
+    return !!user;
   },
 };
 
