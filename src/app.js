@@ -13,7 +13,7 @@ const { configurePassport } = require('./config/passport');
 const routes = require('./routes');
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
-
+const { sessionMetadataMiddleware } = require('./config/session');
 /**
  * Initialize Express application
  */
@@ -75,6 +75,7 @@ const createApp = () => {
   configurePassport();
   app.use(passport.initialize());
   app.use(passport.session());
+  app.use(sessionMetadataMiddleware);
 
   // SWAGGER DOCUMENTATION
   const swaggerOptions = {
