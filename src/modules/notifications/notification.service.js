@@ -141,7 +141,12 @@ const getByUser = async (userId, filters) => {
   // Parse metadata from JSON
   const parsedNotifications = notifications.map(notification => ({
     ...notification,
-    metadata: notification.metadata ? JSON.parse(notification.metadata) : null,
+    metadata:
+      notification.metadata
+        ? typeof notification.metadata === "string"
+          ? JSON.parse(notification.metadata)
+          : notification.metadata
+        : null,
   }));
 
   return {
