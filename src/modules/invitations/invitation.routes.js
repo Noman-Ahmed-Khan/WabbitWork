@@ -2,11 +2,59 @@ const express = require('express');
 const invitationController = require('./invitation.controller');
 const invitationValidation = require('./invitation.validation');
 const { validate, sanitize } = require('../../middleware/validation.middleware');
-const { isAuthenticated } = require('../../middleware/auth.middleware');
+const { isAuthenticated, isTeamAdmin } = require('../../middleware/auth.middleware');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
-// All routes require authentication
+/**
+ * @swagger
+ * /invitations/public/{id}/accept:
+ *   get:
+ *     summary: Accept invitation from email link (public - no auth required)
+ *     tags: [Invitations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Invitation ID
+ *     responses:
+ *       200:
+ *         description: Invitation accepted successfully
+ *       400:
+ *         description: Invitation expired or already responded
+ *       404:
+ *         description: Invitation not found
+ */
+router.get('/public/:id/accept', invitationController.acceptPublic);
+
+/**
+ * @swagger
+ * /invitations/public/{id}/decline:
+ *   get:
+ *     summary: Decline invitation from email link (public - no auth required)
+ *     tags: [Invitations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Invitation ID
+ *     responses:
+ *       200:
+ *         description: Invitation declined successfully
+ *       400:
+ *         description: Invitation expired or already responded
+ *       404:
+ *         description: Invitation not found
+ */
+router.get('/public/:id/decline', invitationController.declinePublic);
+
+// All routes below require authentication
 router.use(isAuthenticated);
 
 /**

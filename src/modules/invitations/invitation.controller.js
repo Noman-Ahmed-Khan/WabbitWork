@@ -149,6 +149,32 @@ const resend = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Accept invitation from email link (public endpoint)
+ * @route GET /api/invitations/public/:id/accept
+ * No authentication required - for email links
+ */
+const acceptPublic = catchAsync(async (req, res) => {
+  const result = await invitationService.acceptInvitationPublic(req.params.id);
+
+  // Redirect to confirmation page
+  const frontendUrl = require('../../config/env').frontend.url;
+  res.redirect(`${frontendUrl}/invitations/confirmation?status=accepted`);
+});
+
+/**
+ * Decline invitation from email link (public endpoint)
+ * @route GET /api/invitations/public/:id/decline
+ * No authentication required - for email links
+ */
+const declinePublic = catchAsync(async (req, res) => {
+  const invitation = await invitationService.declineInvitationPublic(req.params.id);
+
+  // Redirect to confirmation page
+  const frontendUrl = require('../../config/env').frontend.url;
+  res.redirect(`${frontendUrl}/invitations/confirmation?status=declined`);
+});
+
 module.exports = {
   create,
   getById,
@@ -160,4 +186,6 @@ module.exports = {
   decline,
   cancel,
   resend,
+  acceptPublic,
+  declinePublic,
 };

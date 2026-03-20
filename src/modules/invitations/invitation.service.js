@@ -73,8 +73,8 @@ const createInvitation = async (teamId, email, role, inviterId, message = null) 
   });
 
   // Build URLs for email
-  const acceptUrl = `${env.frontend.url}/invitations/${invitation.id}/accept`;
-  const declineUrl = `${env.frontend.url}/invitations/${invitation.id}/decline`;
+  const acceptUrl = `${env.frontend.url}/api/invitations/public/${invitation.id}/accept`;
+  const declineUrl = `${env.frontend.url}/api/invitations/public/${invitation.id}/decline`;
   const viewUrl = `${env.frontend.url}/invitations/${invitation.id}`;
 
   // Send notification to invited user
@@ -342,8 +342,8 @@ const resendInvitation = async (invitationId, userId) => {
   });
 
   // Build URLs
-  const acceptUrl = `${env.frontend.url}/invitations/${invitationId}/accept`;
-  const declineUrl = `${env.frontend.url}/invitations/${invitationId}/decline`;
+  const acceptUrl = `${env.frontend.url}/api/invitations/public/${invitationId}/accept`;
+  const declineUrl = `${env.frontend.url}/api/invitations/public/${invitationId}/decline`;
   const viewUrl = `${env.frontend.url}/invitations/${invitationId}`;
 
   // Send notification again
@@ -371,6 +371,116 @@ const resendInvitation = async (invitationId, userId) => {
   return InvitationModel.findById(invitationId);
 };
 
+/**
+ * Accept invitation from public email link (no authentication required)
+ */
+const acceptInvitationPublic = async (invitationId) => {
+  const invitation = await InvitationModel.findById(invitationId);
+
+  if (!invitation) {
+    throw ApiError.notFound('Invitation not found');
+  }
+
+  // Check if invitation is still pending
+  if (invitation.status !== INVITATION_STATUS.PENDING) {
+    throw ApiError.badRequest(`Invitation has already been ${invitation.status}`);
+  }
+
+  // Check if invitation is expired
+  if (new Date(invitation.expires_at) < new Date()) {
+    throw ApiError.badRequest('Invitation has expired');
+  }
+
+  const userId = invitation.invited_user_id;
+
+  // Accept the invitation
+  await InvitationModel.accept(invitationId);
+
+  // Create membership
+  const membership = await MembershipModel.create({
+    user_id: userId,
+    team_id: invitation.team_id,
+    role: invitation.role,
+    status: MEMBERSHIP_STATUS.ACTIVE,
+    invitation_id: invitationId,
+  });
+
+  // Get user details
+  const user = await userService.findById(userId);
+
+  // Send notification to inviter
+  await notificationService.create({
+    userId: invitation.invited_by,
+    actorId: userId,
+    type: NOTIFICATION_TYPE.INVITATION_ACCEPTED,
+    title: 'Invitation Accepted',
+    message: `${user.first_name} ${user.last_name} has accepted your invitation to join ${invitation.team_name}`,
+    metadata: {
+      invitationId,
+      teamId: invitation.team_id,
+      teamName: invitation.team_name,
+      role: invitation.role,
+      teamUrl: `${env.frontend.url}/teams/${invitation.team_id}/members`,
+    },
+    actionUrl: `${env.frontend.url}/teams/${invitation.team_id}/members`,
+    sendEmail: true,
+  });
+
+  return {
+    invitation: await InvitationModel.findById(invitationId),
+    membership,
+  };
+};
+
+/**
+ * Decline invitation from public email link (no authentication required)
+ */
+const declineInvitationPublic = async (invitationId) => {
+  const invitation = await InvitationModel.findById(invitationId);
+
+  if (!invitation) {
+    throw ApiError.notFound('Invitation not found');
+  }
+
+  // Check if invitation is still pending
+  if (invitation.status !== INVITATION_STATUS.PENDING) {
+    throw ApiError.badRequest(`Invitation has already been ${invitation.status}`);
+  }
+
+  // Check if invitation is expired
+  if (new Date(invitation.expires_at) < new Date()) {
+    throw ApiError.badRequest('Invitation has expired');
+  }
+
+  const userId = invitation.invited_user_id;
+
+  // Decline the invitation
+  await InvitationModel.decline(invitationId);
+
+  // Get user details
+  const user = await userService.findById(userId);
+
+  // Send notification to inviter
+  await notificationService.create({
+    userId: invitation.invited_by,
+    actorId: userId,
+    type: NOTIFICATION_TYPE.INVITATION_DECLINED,
+    title: 'Invitation Declined',
+    message: `${user.first_name} ${user.last_name} has declined your invitation to join ${invitation.team_name}`,
+    metadata: {
+      invitationId,
+      teamId: invitation.team_id,
+      teamName: invitation.team_name,
+      role: invitation.role,
+      teamUrl: `${env.frontend.url}/teams/${invitation.team_id}`,
+    },
+    actionUrl: `${env.frontend.url}/teams/${invitation.team_id}`,
+    sendEmail: true,
+  });
+
+  return InvitationModel.findById(invitationId);
+};
+
 module.exports = {
   createInvitation,
   getById,
@@ -382,4 +492,6 @@ module.exports = {
   declineInvitation,
   cancelInvitation,
   resendInvitation,
+  acceptInvitationPublic,
+  declineInvitationPublic,
 };
