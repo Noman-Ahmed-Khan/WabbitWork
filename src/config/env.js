@@ -51,6 +51,13 @@ const env = {
     resetPasswordUrl: process.env.FRONTEND_RESET_URL,
   },
 
+  // Google OAuth
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+  },
+
   // Helpers
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',

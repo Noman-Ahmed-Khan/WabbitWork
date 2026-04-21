@@ -326,6 +326,10 @@ const changePassword = async (userId, currentPassword, newPassword, ipAddress, u
     throw ApiError.notFound('User not found');
   }
 
+  if (!user.password) {
+    throw ApiError.badRequest('This account does not have a password yet. Use the password reset flow first.');
+  }
+
   // Verify current password
   const isValidPassword = await comparePassword(currentPassword, user.password);
   if (!isValidPassword) {
@@ -362,6 +366,10 @@ const changeEmail = async (userId, newEmail, password) => {
   
   if (!user) {
     throw ApiError.notFound('User not found');
+  }
+
+  if (!user.password) {
+    throw ApiError.badRequest('This account does not have a password yet. Use the password reset flow first.');
   }
 
   // Verify password

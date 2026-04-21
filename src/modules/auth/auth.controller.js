@@ -71,6 +71,41 @@ const login = (req, res, next) => {
 };
 
 /**
+ * Google OAuth Callback
+ * @route GET /api/auth/google/callback
+ */
+const googleCallback = (req, res, next) => {
+  passport.authenticate('google', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+
+    if (!user) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/login?error=auth_failed`);
+    }
+
+    req.login(user, (loginErr) => {
+      if (loginErr) {
+        return next(loginErr);
+      }
+
+      // Save session with metadata
+      req.session.userId = user.id;
+
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          return next(saveErr);
+        }
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(frontendUrl);
+      });
+    });
+  })(req, res, next);
+};
+
+/**
  * Logout user
  * @route POST /api/auth/logout
  */
@@ -397,4 +432,5 @@ module.exports = {
   getSessions,
   deleteSession,
   refreshSession,
+  googleCallback,
 };

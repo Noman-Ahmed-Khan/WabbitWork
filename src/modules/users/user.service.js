@@ -16,6 +16,11 @@ const findByEmail = async (email) => {
   return UserModel.findByEmail(email);
 };
 
+// Find user by Google ID
+const findByGoogleId = async (googleId) => {
+  return UserModel.findByGoogleId(googleId);
+};
+
 // Create a new user
 const create = async (userData) => {
   return UserModel.create(userData);
@@ -84,4 +89,5 @@ module.exports = {
   clearPendingEmail,
   emailExists,
   search,
+  findByGoogleId,
 };

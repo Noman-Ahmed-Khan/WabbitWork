@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const authController = require('./auth.controller');
 const authValidation = require('./auth.validation');
 const { validate, sanitize } = require('../../middleware/validation.middleware');
@@ -10,6 +11,36 @@ const router = express.Router();
 // ============================================
 // PUBLIC ROUTES (with rate limiting)
 // ============================================
+
+/**
+ * @swagger
+ * /auth/google:
+ *   get:
+ *     summary: Initiate Google OAuth login
+ *     tags: [Auth]
+ *     responses:
+ *       302:
+ *         description: Redirect to Google login page
+ */
+router.get(
+  '/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+  })
+);
+
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     summary: Google OAuth callback
+ *     tags: [Auth]
+ *     responses:
+ *       302:
+ *         description: Redirect to frontend after login
+ */
+router.get('/google/callback', authController.googleCallback);
 
 /**
  * @swagger

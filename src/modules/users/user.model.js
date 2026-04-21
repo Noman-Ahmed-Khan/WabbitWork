@@ -21,6 +21,11 @@ const UserModel = {
     return db(TABLE_NAME).where({ email: email.toLowerCase() }).first();
   },
 
+  // Find user by Google ID
+  findByGoogleId: (googleId) => {
+    return db(TABLE_NAME).where({ google_id: googleId }).first();
+  },
+
   // Create a new user
   create: (userData) => {
     return db(TABLE_NAME)
