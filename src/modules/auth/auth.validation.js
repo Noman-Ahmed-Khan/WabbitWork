@@ -2,7 +2,16 @@ const Joi = require('joi');
 
 // Password validation regex
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+// Strong password requirements
 const passwordMessage = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+const avatarUrlSchema = Joi.string()
+  .trim()
+  .uri({ scheme: ['http', 'https'] })
+  .max(500)
+  .messages({
+    'string.uri': 'Avatar URL must be a valid http or https URL',
+    'string.max': 'Avatar URL must not exceed 500 characters',
+  });
 
 const register = {
   body: Joi.object({
@@ -30,6 +39,10 @@ const register = {
       'string.min': 'Last name is required',
       'string.max': 'Last name must not exceed 100 characters',
       'any.required': 'Last name is required',
+    }),
+    avatar_url: avatarUrlSchema.allow(null).optional().messages({
+      'string.uri': 'Avatar URL must be a valid http or https URL',
+      'string.max': 'Avatar URL must not exceed 500 characters',
     }),
   }),
 };
@@ -132,6 +145,15 @@ const changeEmail = {
   }),
 };
 
+const updateAvatar = {
+  body: Joi.object({
+    avatar_url: avatarUrlSchema.allow(null, '').optional().messages({
+      'string.uri': 'Avatar URL must be a valid http or https URL',
+      'string.max': 'Avatar URL must not exceed 500 characters',
+    }),
+  }),
+};
+
 const logoutAll = {
   body: Joi.object({
     keepCurrent: Joi.boolean().optional().default(false),
@@ -156,6 +178,7 @@ module.exports = {
   validateResetToken,
   changePassword,
   changeEmail,
+  updateAvatar,
   logoutAll,
   deleteSession,
 };
