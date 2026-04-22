@@ -9,6 +9,7 @@ const { hashPassword, comparePassword } = require('../../utils/bcrypt');
 const { generateToken, generateVerificationCode, hashToken, createExpirationDate, isExpired } = require('../../utils/tokens');
 const { TOKEN_TYPE } = require('../../utils/constants');
 const env = require('../../config/env');
+const { deleteStoredAvatar, isStoredAvatarUrl } = require('./avatar.storage');
 
 /**
  * Register a new user
@@ -55,6 +56,39 @@ const getProfile = async (userId) => {
     ...userWithoutPassword,
     teams: memberships,
   };
+};
+
+/**
+ * Persist the current user's avatar image
+ */
+const persistAvatar = async (userId, avatarUrl, previousAvatarUrl = null) => {
+  const normalizedAvatarUrl = avatarUrl ?? null;
+
+  const user = await userService.update(userId, {
+    avatar_url: normalizedAvatarUrl,
+  });
+
+  if (
+    previousAvatarUrl &&
+    previousAvatarUrl !== normalizedAvatarUrl &&
+    isStoredAvatarUrl(previousAvatarUrl)
+  ) {
+    try {
+      await deleteStoredAvatar(previousAvatarUrl);
+    } catch (error) {
+      console.warn('Failed to delete old avatar file:', error.message);
+    }
+  }
+
+  return user;
+};
+
+/**
+ * Update the current user's avatar image
+ */
+const updateAvatar = async (userId, avatarUrl, previousAvatarUrl = null) => {
+  await persistAvatar(userId, avatarUrl, previousAvatarUrl);
+  return getProfile(userId);
 };
 
 /**
@@ -542,6 +576,8 @@ const refreshSession = async (sessionId) => {
 module.exports = {
   register,
   getProfile,
+  persistAvatar,
+  updateAvatar,
   sendVerificationEmail,
   verifyEmailWithToken,
   verifyEmailWithCode,

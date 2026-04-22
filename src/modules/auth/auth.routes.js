@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const authController = require('./auth.controller');
 const authValidation = require('./auth.validation');
+const { avatarUpload } = require('./avatar.storage');
 const { validate, sanitize } = require('../../middleware/validation.middleware');
 const { isAuthenticated } = require('../../middleware/auth.middleware');
 const { authLimiter } = require('../../middleware/rateLimiter.middleware');
@@ -376,6 +377,56 @@ router.post('/refresh', isAuthenticated, authController.refreshSession);
  *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get('/me', isAuthenticated, authController.getMe);
+
+/**
+ * @swagger
+ * /auth/me/avatar:
+ *   patch:
+ *     summary: Update current user's avatar image
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateAvatarRequest'
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateAvatarRequest'
+ *     responses:
+ *       200:
+ *         description: Avatar updated successfully
+ *       400:
+ *         description: Invalid avatar file or URL
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.patch(
+  '/me/avatar',
+  isAuthenticated,
+  avatarUpload.single('avatar'),
+  sanitize,
+  validate(authValidation.updateAvatar),
+  authController.updateAvatar
+);
+
+/**
+ * @swagger
+ * /auth/me/avatar:
+ *   delete:
+ *     summary: Remove current user's avatar image
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: Avatar removed successfully
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.delete('/me/avatar', isAuthenticated, authController.removeAvatar);
 
 /**
  * @swagger

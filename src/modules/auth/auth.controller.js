@@ -1,5 +1,6 @@
 const passport = require('passport');
 const authService = require('./auth.service');
+const { storeAvatarFile } = require('./avatar.storage');
 const catchAsync = require('../../utils/catchAsync');
 const ApiError = require('../../utils/ApiError');
 
@@ -162,6 +163,60 @@ const getMe = catchAsync(async (req, res) => {
 
   res.json({
     success: true,
+    data: { user: profile },
+  });
+});
+
+/**
+ * Update current user's avatar image
+ * @route PATCH /api/auth/me/avatar
+ */
+const updateAvatar = catchAsync(async (req, res) => {
+  const { avatar_url } = req.body;
+
+  let nextAvatarUrl = avatar_url;
+  let uploadedAvatar = null;
+
+  if (req.file) {
+    uploadedAvatar = await storeAvatarFile(req.file, req);
+    nextAvatarUrl = uploadedAvatar.avatarUrl;
+  }
+
+  if (!nextAvatarUrl) {
+    throw ApiError.badRequest('Upload an avatar image file or provide avatar_url');
+  }
+
+  try {
+    const profile = await authService.updateAvatar(req.user.id, nextAvatarUrl, req.user.avatar_url);
+
+    res.json({
+      success: true,
+      message: 'Avatar updated successfully',
+      data: { user: profile },
+    });
+  } catch (error) {
+    if (uploadedAvatar) {
+      try {
+        await authService.persistAvatar(req.user.id, req.user.avatar_url, uploadedAvatar.avatarUrl);
+      } catch (rollbackError) {
+        console.warn('Failed to roll back avatar upload:', rollbackError.message);
+      }
+    }
+
+    throw error;
+  }
+});
+
+/**
+ * Remove current user's avatar image
+ * @route DELETE /api/auth/me/avatar
+ */
+const removeAvatar = catchAsync(async (req, res) => {
+  const profile = await authService.updateAvatar(req.user.id, null, req.user.avatar_url);
+
+  res.json({
+    success: true,
+    message: 'Avatar removed successfully',
     data: { user: profile },
   });
 });
@@ -429,6 +484,8 @@ module.exports = {
   resetPassword,
   changePassword,
   changeEmail,
+  updateAvatar,
+  removeAvatar,
   getSessions,
   deleteSession,
   refreshSession,
