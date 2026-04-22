@@ -24,37 +24,8 @@ const getById = {
   }),
 };
 
-const updateMemberRole = {
-  params: Joi.object({
-    id: Joi.string().uuid().required().label('Team ID'),
-    memberId: Joi.string().uuid().required().label('Membership ID'),
-  }),
-  body: Joi.object({
-    role: Joi.string()
-      .valid('admin', 'member', 'owner', 'ADMIN', 'MEMBER', 'OWNER')
-      .required(),
-  }),
-};
-
-const removeMember = {
-  params: Joi.object({
-    id: Joi.string().uuid().required().label('Team ID'),
-    memberId: Joi.string().uuid().required().label('Membership ID'),
-  }),
-};
-
-// ADD THIS
-const leaveTeam = {
-  params: Joi.object({
-    id: Joi.string().uuid().required().label('Team ID'),
-  }),
-};
-
 module.exports = {
   create,
   update,
   getById,
-  updateMemberRole,
-  removeMember,
-  leaveTeam,
 };
